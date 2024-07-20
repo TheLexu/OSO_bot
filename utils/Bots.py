@@ -1,40 +1,35 @@
 import vk_api
+from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.longpoll import VkLongPoll, VkEventType
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 
-TOKEN = 'vk1.a.twQWhoQKZLg1EGRKrHwX6gyAQTt5FW55JaIE7wTvFWRHa9CWsv9g2HKHhRi9RSZdVR_8UohJ0J-nw1Pma-wekbjojIPkP8w4zSXbRFVmS8UwyMg-jtI-WgH2aJzNBLIImJjPv0Pyz0jf-pYAkye0aoBVFhKK7nRdSPJeR-RGK-cvWan-2hKcn-9BCCAJsRDsaoBjuFOv9OroQmEcITHhtQ'
+from utils.utils import Sender
 
-vk_session = vk_api.VkApi(token=TOKEN)
-session_api = vk_session.get_api()
-longpoll = VkLongPoll(vk_session)
 
-scope = ["https://docs.google.com/spreadsheets/d/1s3WEnxUGNOw9CzJc34ohm6F5KIPswM56ABLbihgPO7s/edit?gid=1206327905#gid=1206327905", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name(".venv/credentials.json", scope)
-client = gspread.authorize(creds)
+class BasicBot(object):
+    HELLO_WORDS = ('start', 'begin', 'начать', 'привет', 'добрый день', 'здравствуйте')
 
-sheet = client.open("a").sheet1
+    def __init__(self, token):
+        self.token = token
 
-def get_qa_pairs():
-    data = sheet.get_all_records()
-    qa_pairs = {}
-    for row in data:
-        question = row.get("Вопрос").lower()
-        answer = row.get("Ответ")
-        qa_pairs[question] = answer
-    return qa_pairs
+    def start(self):
 
-def main():
-    qa_pairs = get_qa_pairs()
-    for event in longpoll.listen():
-        if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-            user_id = event.user_id
-            message_text = event.text.lower()
+        vk_session = vk_api.VkApi(token=self.token)
+        vk = vk_session.get_api()
+        longpoll = VkLongPoll(vk_session)
 
-            response = qa_pairs.get(message_text, "Извините, я не понимаю вашего вопроса.")
+        sender = Sender(vk)
 
-            send_message(user_id, response)
+        for event in longpoll.listen():
+            if event.type == VkEventType.MESSAGE_NEW and event.to_me:
+                text = event.text.lower()
+                user_id = event.user_id
 
-if __name__ == '__main__':
-    main()
-
+                if text in self.HELLO_WORDS:
+                    sender('Добро пожаловать в ОСО!', user_id=user_id)
+                else:
+                    keyboard = VkKeyboard(one_time=True)
+                    keyboard.add_button('Привет', color=VkKeyboardColor.SECONDARY)
+                    keyboard.add_button('Здравствуйте', color=VkKeyboardColor.NEGATIVE)
+                    sender('Привет!',
+                           user_id=user_id,
+                           keyboard=keyboard.get_keyboard())
