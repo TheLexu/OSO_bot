@@ -37,7 +37,6 @@ class BasicBot(object):
                 if text in self.HELLO_WORDS:
                     sender('Добро пожаловать в ОСО!', user_id=user_id)
                 else:
-                    # Получаем ответ на вопрос
                     answer = self.get_response(text)
 
                     if answer == "Извините, я не понимаю вашего вопроса":
@@ -50,5 +49,4 @@ class BasicBot(object):
                             user_id=user_id,
                             keyboard=keyboard.get_keyboard())
                     else:
-                        # Отправляем ответ, если он найден
                         sender(answer, user_id=user_id)
