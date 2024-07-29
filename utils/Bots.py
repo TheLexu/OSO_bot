@@ -2,7 +2,7 @@ import json
 import vk_api
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.longpoll import VkLongPoll, VkEventType
-
+#1
 qa_file = 'qa_pairs.json'
 
 class BasicBot(object):
