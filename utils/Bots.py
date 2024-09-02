@@ -1,40 +1,76 @@
+import json
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from utils.utils import Sender
 
-TOKEN = 'vk1.a.twQWhoQKZLg1EGRKrHwX6gyAQTt5FW55JaIE7wTvFWRHa9CWsv9g2HKHhRi9RSZdVR_8UohJ0J-nw1Pma-wekbjojIPkP8w4zSXbRFVmS8UwyMg-jtI-WgH2aJzNBLIImJjPv0Pyz0jf-pYAkye0aoBVFhKK7nRdSPJeR-RGK-cvWan-2hKcn-9BCCAJsRDsaoBjuFOv9OroQmEcITHhtQ'
+qa_file = 'qa_pairs.json'
+events_file = 'events.json'
+class BasicBot(object):
+    HELLO_WORDS = ('start', 'begin', 'начать', 'привет', 'добрый день', 'здравствуйте')
 
-vk_session = vk_api.VkApi(token=TOKEN)
-session_api = vk_session.get_api()
-longpoll = VkLongPoll(vk_session)
+    def load_qa_pairs(self, qa_file):
+        with open(qa_file, 'r', encoding='utf-8') as file:
+            return json.load(file)
 
-scope = ["https://docs.google.com/spreadsheets/d/1s3WEnxUGNOw9CzJc34ohm6F5KIPswM56ABLbihgPO7s/edit?gid=1206327905#gid=1206327905", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name(".venv/credentials.json", scope)
-client = gspread.authorize(creds)
+    def load_events(self, events_file):
+        with open(events_file, 'r', encoding='utf-8') as file:
+            return json.load(file)
 
-sheet = client.open("a").sheet1
+    def get_response(self, user_question):
+        user_question = user_question.strip().lower()
+        response = self.qa_pairs.get(user_question, "Извините, я не понимаю вопрос.")
+        return response
 
-def get_qa_pairs():
-    data = sheet.get_all_records()
-    qa_pairs = {}
-    for row in data:
-        question = row.get("Вопрос").lower()
-        answer = row.get("Ответ")
-        qa_pairs[question] = answer
-    return qa_pairs
+    def get_events_by_community(self, community_name):
+        events = []
+        for event in self.events:
+            if event['Community'].lower() == community_name.lower():
+                events.append("Мероприятие: {event['Event']} - Дата: {event['Date']}")
+        return events
+    def start(self):
+        vk_session = vk_api.VkApi(token=self.token)
+        longpoll = VkLongPoll(vk_session)
+        sender = Sender(vk_session.get_api())
 
-def main():
-    qa_pairs = get_qa_pairs()
-    for event in longpoll.listen():
-        if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-            user_id = event.user_id
-            message_text = event.text.lower()
+        for event in longpoll.listen():
+            if event.type == VkEventType.MESSAGE_NEW and event.to_me:
+                text = event.text.lower()
+                user_id = event.from_id
 
-            response = qa_pairs.get(message_text, "Извините, я не понимаю вашего вопроса.")
+                if text in self.HELLO_WORDS:
+                    sender(
+                        'Привет! Я - ВК бот ОСО, я помогу тебе ответить на твой интересующий вопрос по поводу объединений, а также назвать мероприятия, которые будут у того или иного сообщества.',
+                        user_id=user_id)
+                else:
+                    answer = self.get_response(text)
+                    if answer == "Извините, я не понимаю вопрос.":
+                        events = self.get_events_by_community(text)
+                        if events:
+                            response = "\n".join(events)
+                        else:
+                            response = "Мероприятия не найдены. Пожалуйста, уточните название сообщества."
 
-            send_message(user_id, response)
+                        sender(response, user_id=user_id)
+                    else:
+                        sender(answer, user_id=user_id)
 
-if __name__ == '__main__':
-    main()
 
+
+
+    def start(self):
+        vk_session = vk_api.VkApi(token=self.token)
+        vk = vk_session.get_api()
+        longpoll = VkLongPoll(vk_session)
+
+        sender = Sender(vk)
+
+        for event in longpoll.listen():
+            if event.type == VkEventType.MESSAGE_NEW and event.to_me:
+                text = event.text.lower()
+                user_id = event.user_id
+
+                if text in self.HELLO_WORDS:
+                    sender('Добро пожаловать в ОСО!', user_id=user_id)
+                else:
+                    answer = self.get_response(text)
+                    sender(answer, user_id=user_id)
