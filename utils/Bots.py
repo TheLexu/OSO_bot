@@ -54,23 +54,3 @@ class BasicBot(object):
                     else:
                         sender(answer, user_id=user_id)
 
-
-
-
-    def start(self):
-        vk_session = vk_api.VkApi(token=self.token)
-        vk = vk_session.get_api()
-        longpoll = VkLongPoll(vk_session)
-
-        sender = Sender(vk)
-
-        for event in longpoll.listen():
-            if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-                text = event.text.lower()
-                user_id = event.user_id
-
-                if text in self.HELLO_WORDS:
-                    sender('Добро пожаловать в ОСО!', user_id=user_id)
-                else:
-                    answer = self.get_response(text)
-                    sender(answer, user_id=user_id)
